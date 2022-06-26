@@ -27,6 +27,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.hapticfeedback.HapticFeedback
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
@@ -42,6 +43,7 @@ import io.github.binishmanandhar23.differentscreensize.data.Screen
 import io.github.binishmanandhar23.differentscreensize.screens.DetailScreen
 import io.github.binishmanandhar23.differentscreensize.screens.HomeScreen
 import io.github.binishmanandhar23.differentscreensize.ui.theme.DifferentScreenSizeTheme
+import io.github.binishmanandhar23.differentscreensize.utils.rememberViewInteropNestedScrollConnection
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -80,7 +82,7 @@ class MainActivity : ComponentActivity() {
             Row {
                 when (windowSizeClass.widthSizeClass) {
                     WindowWidthSizeClass.Medium -> {
-                        NavigationRail(backgroundColor = Color.White) {
+                        NavigationRail(backgroundColor = MaterialTheme.colors.background) {
                             Spacer(modifier = Modifier.size(20.dp))
                             items.forEach { screen ->
                                 val isSelected = currentDestination?.route == screen.route
