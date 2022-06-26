@@ -4,6 +4,7 @@ import android.media.MediaPlayer
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.MaterialTheme
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material3.Divider
@@ -60,7 +61,7 @@ class DetailScreen(val navController: NavController) {
                         onClick = { navController.popBackStack() },
                         modifier = Modifier.padding(start = 15.dp)
                     ) {
-                        Icon(Icons.Filled.ArrowBack, contentDescription = "Back button")
+                        Icon(Icons.Filled.ArrowBack, contentDescription = "Back button", tint = MaterialTheme.colors.onBackground)
                     }
                 }
                 Divider(

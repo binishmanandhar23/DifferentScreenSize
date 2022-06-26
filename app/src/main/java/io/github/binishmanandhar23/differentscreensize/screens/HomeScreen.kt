@@ -158,18 +158,18 @@ class HomeScreen(val navController: NavController) {
                     Icon(
                         Icons.Default.Face,
                         contentDescription = "Language change",
-                        tint = Color.Black
+                        tint = MaterialTheme.colors.onBackground
                     )
                     Icon(
                         Icons.Default.Search,
                         contentDescription = "Language change",
-                        tint = Color.Black,
+                        tint = MaterialTheme.colors.onBackground,
                         modifier = Modifier.padding(horizontal = 14.dp)
                     )
                     Icon(
                         Icons.Default.Menu,
                         contentDescription = "Language change",
-                        tint = Color.Black
+                        tint = MaterialTheme.colors.onBackground
                     )
                 }
             }
