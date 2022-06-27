@@ -1,21 +1,20 @@
 package io.github.binishmanandhar23.differentscreensize.utils
 
-import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.ExperimentalAnimationApi
+import androidx.compose.animation.*
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.MaterialTheme
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Clear
-import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.List
-import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -34,29 +33,32 @@ import coil.request.ImageRequest
 import coil.size.Size
 import io.github.binishmanandhar23.differentscreensize.data.BookListPreviewData
 import io.github.binishmanandhar23.differentscreensize.data.CustomNavigationDrawer
-import io.github.binishmanandhar23.differentscreensize.data.CustomNavigationDrawerItems
-import io.github.binishmanandhar23.differentscreensize.data.Screen
 
 object Components {
 
     @Composable
-    fun CustomNavigationDrawer(modifier: Modifier = Modifier, listOfItems: List<CustomNavigationDrawer>, onClick: ((customNavigationDrawer: CustomNavigationDrawer) -> Unit)? = null) {
+    fun CustomNavigationDrawer(
+        modifier: Modifier = Modifier,
+        listOfItems: List<CustomNavigationDrawer>,
+        onClick: ((customNavigationDrawer: CustomNavigationDrawer) -> Unit)? = null
+    ) {
         val hapticFeedback = LocalHapticFeedback.current
         Column(
             modifier = modifier
                 .padding(top = 20.dp)
-                .fillMaxHeight()
-            , verticalArrangement = Arrangement.spacedBy(20.dp)
+                .fillMaxHeight(), verticalArrangement = Arrangement.spacedBy(20.dp)
         ) {
             listOfItems.forEach { drawerItems ->
                 drawerItems.customNavigationDrawerItems.run {
-                    Row(horizontalArrangement = Arrangement.SpaceEvenly, modifier = Modifier
-                        .padding(horizontal = 20.dp)
-                        .fillMaxWidth()
-                        .clickable(MutableInteractionSource(), null) {
-                            hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
-                            onClick?.invoke(drawerItems)
-                        }, verticalAlignment = Alignment.CenterVertically) {
+                    Row(
+                        horizontalArrangement = Arrangement.SpaceEvenly, modifier = Modifier
+                            .padding(horizontal = 20.dp)
+                            .fillMaxWidth()
+                            .clickable(MutableInteractionSource(), null) {
+                                hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
+                                onClick?.invoke(drawerItems)
+                            }, verticalAlignment = Alignment.CenterVertically
+                    ) {
                         Icon(
                             if (isSelected) iconSelected else iconUnSelected,
                             contentDescription = stringResource(id = title),
@@ -155,6 +157,95 @@ object Components {
                             .padding(20.dp)
                             .size(30.dp)
                     )
+            }
+        }
+    }
+
+    @OptIn(ExperimentalMaterial3Api::class, ExperimentalAnimationApi::class)
+    @Composable
+    fun PlaybackSpeedButton(
+        speed: Float,
+        isSelected: Boolean = false,
+        onClick: ((speed: Float) -> Unit)
+    ) {
+        val hapticFeedback = LocalHapticFeedback.current
+        AnimatedContent(targetState = isSelected, transitionSpec = {
+            scaleIn(tween(300)) with scaleOut(tween(300))
+        }) { selected ->
+            Card(
+                shape = RoundedCornerShape(5.dp),
+                elevation = CardDefaults.cardElevation(if (selected) 5.dp else 1.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colors.background),
+                border = BorderStroke(
+                    1.dp,
+                    color = if (selected) MaterialTheme.colors.primary else MaterialTheme.colors.onBackground
+                ),
+                onClick = {
+                    hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
+                    onClick(speed)
+                }
+            ) {
+                Box {
+                    Text(
+                        text = "${speed}X",
+                        style = TextStyle(fontSize = 12.sp),
+                        color = MaterialTheme.colors.onBackground,
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 5.dp)
+                    )
+                }
+            }
+        }
+    }
+
+    @Composable
+    fun CustomSeekbar(
+        modifier: Modifier = Modifier,
+        value: Float,
+        duration: Float,
+        onValueChangeFinished: (newValue: Float) -> Unit
+    ) {
+        var defaultValue by remember { mutableStateOf(value) }
+        Slider(
+            value = defaultValue,
+            onValueChange = { defaultValue = it },
+            onValueChangeFinished = { onValueChangeFinished(defaultValue) },
+            valueRange = 0f..duration,
+            modifier = modifier
+        )
+    }
+
+    @OptIn(ExperimentalMaterial3Api::class, ExperimentalAnimationApi::class)
+    @Composable
+    fun PlayPauseButton(
+        loading: Boolean = false,
+        play: Boolean,
+        onClick: (isPlaying: Boolean) -> Unit
+    ) {
+        val hapticFeedback = LocalHapticFeedback.current
+        var defaultValue by remember { mutableStateOf(play) }
+        AnimatedContent(targetState = defaultValue) { isPlaying ->
+            Card(
+                shape = CircleShape,
+                elevation = CardDefaults.cardElevation(3.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colors.background),
+                border = BorderStroke(1.dp, color = MaterialTheme.colors.onBackground),
+                onClick = {
+                    hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
+                    defaultValue = !defaultValue
+                    onClick(isPlaying)
+                }
+            ) {
+                Box {
+                    if (loading)
+                        CircularProgressIndicator()
+                    else
+                        Icon(
+                            if (!isPlaying) Icons.Default.PlayArrow else Icons.Default.Star,
+                            contentDescription = "Play button",
+                            modifier = Modifier.padding(10.dp),
+                            tint = MaterialTheme.colors.onBackground
+                        )
+                }
             }
         }
     }

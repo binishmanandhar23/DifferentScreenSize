@@ -3,6 +3,7 @@ package io.github.binishmanandhar23.differentscreensize
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.activity.viewModels
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -19,7 +20,6 @@ import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.List
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.*
-import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.windowsizeclass.ExperimentalMaterial3WindowSizeClassApi
 import androidx.compose.material3.windowsizeclass.WindowWidthSizeClass
 import androidx.compose.material3.windowsizeclass.calculateWindowSizeClass
@@ -34,7 +34,6 @@ import androidx.compose.ui.hapticfeedback.HapticFeedback
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import androidx.navigation.NavGraph.Companion.findStartDestination
@@ -43,14 +42,18 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navigation
 import io.github.binishmanandhar23.differentscreensize.data.CustomNavigationDrawer
 import io.github.binishmanandhar23.differentscreensize.data.Screen
 import io.github.binishmanandhar23.differentscreensize.screens.DetailScreen
 import io.github.binishmanandhar23.differentscreensize.screens.HomeScreen
 import io.github.binishmanandhar23.differentscreensize.ui.theme.DifferentScreenSizeTheme
 import io.github.binishmanandhar23.differentscreensize.utils.Components
+import io.github.binishmanandhar23.differentscreensize.viewmodels.DetailScreenViewModel
 
 class MainActivity : ComponentActivity() {
+    private val detailScreenViewModel by viewModels<DetailScreenViewModel>()
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
@@ -66,7 +69,6 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    @Preview
     @OptIn(ExperimentalMaterial3WindowSizeClassApi::class, ExperimentalMaterial3Api::class)
     @Composable
     private fun MainBody() {
@@ -82,12 +84,18 @@ class MainActivity : ComponentActivity() {
                 else -> false
             }
         }
-        val drawerSize by animateDpAsState(targetValue = if (drawerStateOpen) 280.dp else 0.dp)
+        /*LaunchedEffect(key1 = currentDestination?.route){
+            if(currentDestination?.route != Screen.Detail.route)
+                detailScreenViewModel.reset()
+        }*/
+        val expandedDrawerSize by animateDpAsState(targetValue = if (drawerStateOpen) 280.dp else 0.dp)
+        val mediumDrawerSize by animateDpAsState(targetValue = if (drawerStateOpen) 100.dp else 0.dp)
+        val compactDrawerSize by animateDpAsState(targetValue = if (drawerStateOpen) 70.dp else 0.dp)
         Box(modifier = Modifier.fillMaxSize()) {
             Row {
                 when (windowSizeClass.widthSizeClass) {
                     WindowWidthSizeClass.Medium -> {
-                        NavigationRail(backgroundColor = MaterialTheme.colors.background) {
+                        NavigationRail(backgroundColor = MaterialTheme.colors.background, modifier = Modifier.width(mediumDrawerSize)) {
                             Spacer(modifier = Modifier.size(20.dp))
                             items.forEach { screen ->
                                 val isSelected = currentDestination?.route == screen.route
@@ -118,14 +126,14 @@ class MainActivity : ComponentActivity() {
                                 Spacer(modifier = Modifier.size(20.dp))
                             }
                         }
-                        MainNavHost(navController = navController)
+                        MainNavHost(navController = navController, modifier = Modifier)
                     }
                     WindowWidthSizeClass.Expanded ->
                         Row(
                             modifier = Modifier.fillMaxSize()
                         ) {
                             Components.CustomNavigationDrawer(
-                                modifier = Modifier.widthIn(max = drawerSize),
+                                modifier = Modifier.widthIn(max = expandedDrawerSize),
                                 listOfItems = listOf(
                                     CustomNavigationDrawer.Home,
                                     CustomNavigationDrawer.Library,
@@ -158,11 +166,13 @@ class MainActivity : ComponentActivity() {
                                 )
                             MainNavHost(navController = navController)
                         }
-                    else -> MainNavHost(navController = navController)
+                    else -> MainNavHost(navController = navController, modifier = Modifier.padding(bottom = compactDrawerSize))
                 }
             }
             if (windowSizeClass.widthSizeClass == WindowWidthSizeClass.Compact)
-                BottomNavigation(modifier = Modifier.align(Alignment.BottomCenter)) {
+                BottomNavigation(modifier = Modifier
+                    .height(compactDrawerSize)
+                    .align(Alignment.BottomCenter)) {
                     items.forEach { screen ->
                         val isSelected = currentDestination?.route == screen.route
                         BottomNavigationItem(
@@ -197,15 +207,17 @@ class MainActivity : ComponentActivity() {
     }
 
     @Composable
-    private fun MainNavHost(navController: NavHostController) {
+    private fun MainNavHost(navController: NavHostController, modifier: Modifier = Modifier) {
         NavHost(
             navController,
-            startDestination = Screen.Home.route,
-            modifier = Modifier.padding(bottom = 50.dp)
+            startDestination = Screen.Main.route,
+            modifier = modifier
         ) {
-            composable(Screen.Home.route) { Home(navController) }
-            composable(Screen.Profile.route) { Profile(navController) }
-            composable(Screen.Library.route) { Library(navController) }
+            navigation(startDestination = Screen.Home.route, route = Screen.Main.route) {
+                composable(Screen.Home.route) { Home(navController) }
+                composable(Screen.Profile.route) { Profile(navController) }
+                composable(Screen.Library.route) { Library(navController) }
+            }
             composable(Screen.Detail.route) { Detail(navController) }
         }
     }
@@ -231,7 +243,7 @@ class MainActivity : ComponentActivity() {
 
     @Composable
     private fun Detail(navController: NavController) {
-        DetailScreen(navController).Main()
+        DetailScreen(navController, detailScreenViewModel = detailScreenViewModel).Main()
     }
 
     private fun postClick(
