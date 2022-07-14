@@ -12,19 +12,15 @@ import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import io.github.binishmanandhar23.differentscreensize.R
 import io.github.binishmanandhar23.differentscreensize.data.BookDetailData
+import io.github.binishmanandhar23.differentscreensize.enums.Action
 import io.github.binishmanandhar23.differentscreensize.enums.PlayState
 import io.github.binishmanandhar23.differentscreensize.receivers.NotificationActionReceiver
 import okhttp3.internal.notify
 import java.io.IOException
 import java.net.URL
 
-class PlayerNotificationCreation {
-    companion object {
-        const val AudioBookChannelId = "AudioBookChannelId"
-        const val ActionPrevious = "ActionPrevious"
-        const val ActionPlay = "ActionPlay"
-        const val ActionNext = "ActionNext"
-    }
+object PlayerNotificationCreation {
+    const val AudioBookChannelId = "AudioBookChannelId"
 
     fun createNotification(
         context: Context,
@@ -59,7 +55,7 @@ class PlayerNotificationCreation {
         }
 
         val intentPrevious = Intent(context, NotificationActionReceiver::class.java).setAction(
-            ActionPrevious
+            Action.ActionPrevious.action
         )
         val pendingIntentPrevious = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M)
             PendingIntent.getBroadcast(
@@ -77,7 +73,7 @@ class PlayerNotificationCreation {
             )
 
         val intentPlay = Intent(context, NotificationActionReceiver::class.java).setAction(
-            ActionPlay
+            Action.ActionPlay.action
         )
         val pendingIntentPlay = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M)
             PendingIntent.getBroadcast(
@@ -90,7 +86,7 @@ class PlayerNotificationCreation {
             PendingIntent.getBroadcast(context, 0, intentPlay, PendingIntent.FLAG_UPDATE_CURRENT)
 
         val intentNext = Intent(context, NotificationActionReceiver::class.java).setAction(
-            ActionNext
+            Action.ActionNext.action
         )
         val pendingIntentNext = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M)
             PendingIntent.getBroadcast(

@@ -22,6 +22,9 @@ class DetailScreenViewModel : ViewModel() {
     fun isLoading() = _initializing.update { true }
     fun done() = _initializing.update { false }
 
+    val currentlyPlayingAudioUrl = MutableLiveData<String>()
+
+    var mediaPlayer: MediaPlayer? = null
 
     private var _currentTime = MutableStateFlow("00:00")
     val currentTime = _currentTime.asStateFlow()

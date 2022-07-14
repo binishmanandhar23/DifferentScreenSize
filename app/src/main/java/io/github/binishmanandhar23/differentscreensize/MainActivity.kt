@@ -1,6 +1,14 @@
 package io.github.binishmanandhar23.differentscreensize
 
+import android.app.NotificationChannel
+import android.app.NotificationManager
+import android.content.BroadcastReceiver
+import android.content.Context
+import android.content.Intent
+import android.media.MediaPlayer
+import android.os.Build
 import android.os.Bundle
+import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.viewModels
@@ -45,17 +53,37 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navigation
 import io.github.binishmanandhar23.differentscreensize.data.CustomNavigationDrawer
 import io.github.binishmanandhar23.differentscreensize.data.Screen
+import io.github.binishmanandhar23.differentscreensize.enums.Action
+import io.github.binishmanandhar23.differentscreensize.notification.PlayerNotificationCreation
+import io.github.binishmanandhar23.differentscreensize.receivers.NotificationActionReceiver
 import io.github.binishmanandhar23.differentscreensize.screens.DetailScreen
 import io.github.binishmanandhar23.differentscreensize.screens.HomeScreen
+import io.github.binishmanandhar23.differentscreensize.services.OnClearFromRecent
 import io.github.binishmanandhar23.differentscreensize.ui.theme.DifferentScreenSizeTheme
 import io.github.binishmanandhar23.differentscreensize.utils.Components
 import io.github.binishmanandhar23.differentscreensize.viewmodels.DetailScreenViewModel
+import java.io.IOException
 
 class MainActivity : ComponentActivity() {
     private val detailScreenViewModel by viewModels<DetailScreenViewModel>()
 
+    val broadcastReceiver = object : BroadcastReceiver() {
+        override fun onReceive(p0: Context?, p1: Intent?) {
+            p1?.extras?.getString(Action.ActionName.action)?.let { action ->
+                when (action) {
+                    Action.ActionPrevious.action -> {}
+                    Action.ActionPlay.action -> {}
+                    Action.ActionNext.action -> {}
+                }
+            }
+        }
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        mediaPlayerHandler()
+        createChannel()
+        startService(Intent(baseContext, OnClearFromRecent::class.java))
         setContent {
             DifferentScreenSizeTheme {
                 // A surface container using the 'background' color from the theme
@@ -69,7 +97,38 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    @OptIn(ExperimentalMaterial3WindowSizeClassApi::class, ExperimentalMaterial3Api::class)
+    private fun mediaPlayerHandler() {
+        detailScreenViewModel.currentlyPlayingAudioUrl.observe(this) {
+            detailScreenViewModel.mediaPlayer = MediaPlayer().apply {
+                try {
+                    Log.i("PrepareCheck","Loading $it")
+                    detailScreenViewModel.isLoading()
+                    setDataSource(it)
+                    prepare()
+                    setOnPreparedListener {
+                        Log.i("PrepareCheck","Done")
+                        detailScreenViewModel.done()
+                    }
+                } catch (exception: IOException) {
+                    exception.printStackTrace()
+                }
+            }
+        }
+    }
+
+    private fun createChannel() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val notificationChannel = NotificationChannel(
+                PlayerNotificationCreation.AudioBookChannelId,
+                "Audio Book Channel",
+                NotificationManager.IMPORTANCE_DEFAULT
+            )
+            val notificationManager = getSystemService(NotificationManager::class.java)
+            notificationManager.createNotificationChannel(notificationChannel)
+        }
+    }
+
+    @OptIn(ExperimentalMaterial3WindowSizeClassApi::class)
     @Composable
     private fun MainBody() {
         val navController = rememberNavController()
@@ -95,7 +154,10 @@ class MainActivity : ComponentActivity() {
             Row {
                 when (windowSizeClass.widthSizeClass) {
                     WindowWidthSizeClass.Medium -> {
-                        NavigationRail(backgroundColor = MaterialTheme.colors.background, modifier = Modifier.width(mediumDrawerSize)) {
+                        NavigationRail(
+                            backgroundColor = MaterialTheme.colors.background,
+                            modifier = Modifier.width(mediumDrawerSize)
+                        ) {
                             Spacer(modifier = Modifier.size(20.dp))
                             items.forEach { screen ->
                                 val isSelected = currentDestination?.route == screen.route
@@ -166,13 +228,18 @@ class MainActivity : ComponentActivity() {
                                 )
                             MainNavHost(navController = navController)
                         }
-                    else -> MainNavHost(navController = navController, modifier = Modifier.padding(bottom = compactDrawerSize))
+                    else -> MainNavHost(
+                        navController = navController,
+                        modifier = Modifier.padding(bottom = compactDrawerSize)
+                    )
                 }
             }
             if (windowSizeClass.widthSizeClass == WindowWidthSizeClass.Compact)
-                BottomNavigation(modifier = Modifier
-                    .height(compactDrawerSize)
-                    .align(Alignment.BottomCenter)) {
+                BottomNavigation(
+                    modifier = Modifier
+                        .height(compactDrawerSize)
+                        .align(Alignment.BottomCenter)
+                ) {
                     items.forEach { screen ->
                         val isSelected = currentDestination?.route == screen.route
                         BottomNavigationItem(
@@ -267,4 +334,13 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    override fun onDestroy() {
+        detailScreenViewModel.run {
+            mediaPlayer?.stop()
+            mediaPlayer?.reset()
+            mediaPlayer?.release()
+            updateCurrentTime(0L)
+        }
+        super.onDestroy()
+    }
 }

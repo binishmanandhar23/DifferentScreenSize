@@ -1,8 +1,12 @@
 package io.github.binishmanandhar23.differentscreensize.screens
 
+import android.content.BroadcastReceiver
+import android.content.Context
+import android.content.Intent
 import android.media.MediaPlayer
 import android.os.Build
 import android.os.CountDownTimer
+import android.util.Log
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.ExperimentalAnimationApi
 import androidx.compose.foundation.background
@@ -27,6 +31,8 @@ import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import io.github.binishmanandhar23.differentscreensize.data.BookDetailData
 import io.github.binishmanandhar23.differentscreensize.data.BookListPreviewData
+import io.github.binishmanandhar23.differentscreensize.enums.Action
+import io.github.binishmanandhar23.differentscreensize.receivers.NotificationActionReceiver
 import io.github.binishmanandhar23.differentscreensize.utils.Components
 import io.github.binishmanandhar23.differentscreensize.utils.Components.CustomImage
 import io.github.binishmanandhar23.differentscreensize.viewmodels.DetailScreenViewModel
@@ -58,13 +64,21 @@ class DetailScreen(
         var currentTime by remember { mutableStateOf(0f) }
         val initializing by detailScreenViewModel.initializing.collectAsState()
         val coroutineScope = rememberCoroutineScope()
+        val audioUrl by derivedStateOf {
+            bookDetailData.audioUrl
+        }
+        /*LaunchedEffect(key1 = audioUrl){
+            detailScreenViewModel.currentlyPlayingAudioUrl.value = audioUrl
+        }*/
         val mediaPlayer = remember {
             detailScreenViewModel.isLoading()
             MediaPlayer().apply {
+                Log.i("PrepareCheck","Loading")
                 try {
                     setDataSource(bookDetailData.audioUrl)
                     prepareAsync()
                     setOnPreparedListener {
+                        Log.i("PrepareCheck","Done")
                         detailScreenViewModel.done()
                     }
                 } catch (exception: IOException) {
@@ -72,23 +86,20 @@ class DetailScreen(
                 }
             }
         }
+
         DisposableEffect(key1 = Unit) {
             val countDownTimer: CountDownTimer = object : CountDownTimer(Long.MAX_VALUE, 1000) {
                 override fun onTick(p0: Long) {
                     if (!initializing)
-                        detailScreenViewModel.updateCurrentTime(mediaPlayer.currentPosition.toLong())
+                        detailScreenViewModel.updateCurrentTime(detailScreenViewModel.mediaPlayer?.currentPosition?.toLong()?: 0L)
                             .also {
-                                currentTime = mediaPlayer.currentPosition.toFloat()
+                                currentTime = detailScreenViewModel.mediaPlayer?.currentPosition?.toFloat()?: 0f
                             }
                 }
 
                 override fun onFinish() {}
             }.start()
             onDispose {
-                mediaPlayer.stop()
-                mediaPlayer.reset()
-                mediaPlayer.release()
-                detailScreenViewModel.updateCurrentTime(0L)
                 countDownTimer.cancel()
             }
         }
@@ -150,8 +161,10 @@ class DetailScreen(
                                         isSelected = selectedSpeed == it
                                     ) { speed ->
                                         selectedSpeed = speed
-                                        mediaPlayer.playbackParams =
-                                            mediaPlayer.playbackParams.setSpeed(speed)
+                                        detailScreenViewModel.mediaPlayer?.let { player ->
+                                            player.playbackParams =
+                                                player.playbackParams.setSpeed(speed)
+                                        }
                                     }
                                 }
                             }
@@ -168,10 +181,10 @@ class DetailScreen(
                                 value = currentTime,
                                 onValueChangeFinished = {
                                     coroutineScope.launch {
-                                        mediaPlayer.seekTo(it.toInt())
+                                        detailScreenViewModel.mediaPlayer?.seekTo(it.toInt())
                                     }
                                 },
-                                duration = mediaPlayer.duration.toFloat()
+                                duration = detailScreenViewModel.mediaPlayer?.duration?.toFloat() ?: 0f
                             )
                             Row(
                                 modifier = Modifier
@@ -188,7 +201,7 @@ class DetailScreen(
                                     )
                                 )
                                 Text(
-                                    text = detailScreenViewModel.getFormattedTime(mediaPlayer.duration.toLong()),
+                                    text = detailScreenViewModel.getFormattedTime(detailScreenViewModel.mediaPlayer?.duration?.toLong()?: 0L),
                                     style = TextStyle(
                                         fontSize = 15.sp,
                                         fontWeight = FontWeight.Light,
@@ -198,12 +211,11 @@ class DetailScreen(
                             }
                         }
                 }
-                Components.PlayPauseButton(loading = initializing, play = mediaPlayer.isPlaying) {
-                    if (mediaPlayer.isPlaying)
-                        mediaPlayer.pause()
-                    else mediaPlayer.start()
+                Components.PlayPauseButton(loading = initializing, play = detailScreenViewModel.mediaPlayer?.isPlaying?: false) {
+                    if (detailScreenViewModel.mediaPlayer?.isPlaying == true)
+                        detailScreenViewModel.mediaPlayer?.pause()
+                    else detailScreenViewModel.mediaPlayer?.start()
                 }
-
             }
         }
     }
