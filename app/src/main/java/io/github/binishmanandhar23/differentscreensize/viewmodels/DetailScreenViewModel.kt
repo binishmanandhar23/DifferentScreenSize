@@ -1,5 +1,7 @@
 package io.github.binishmanandhar23.differentscreensize.viewmodels
 
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import android.media.MediaPlayer
 import android.os.CountDownTimer
 import android.os.Looper
@@ -15,6 +17,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.io.IOException
+import java.net.URL
 
 class DetailScreenViewModel : ViewModel() {
     private var _initializing = MutableStateFlow(false)
@@ -36,6 +39,23 @@ class DetailScreenViewModel : ViewModel() {
         val minutes = (durationMillis / 1000) / 60
         val seconds = (durationMillis / 1000) % 60
         return "${minutes.toInt().twoDecimalFormat()}:${seconds.toInt().twoDecimalFormat()}"
+    }
+
+
+    fun getBitmapFromUrl(url: String): MutableLiveData<Bitmap>{
+        val bitmapMutable = MutableLiveData<Bitmap>()
+        viewModelScope.launch(Dispatchers.IO) {
+            val icon = try {
+                URL(url).let {
+                    BitmapFactory.decodeStream(it.openConnection().getInputStream())
+                }
+            } catch (ex: IOException) {
+                ex.printStackTrace()
+                null
+            }
+            bitmapMutable.postValue(icon)
+        }
+        return bitmapMutable
     }
 
 }

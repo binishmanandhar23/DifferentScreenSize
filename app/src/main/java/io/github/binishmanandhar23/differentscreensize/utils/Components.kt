@@ -223,7 +223,7 @@ object Components {
         onClick: (isPlaying: Boolean) -> Unit
     ) {
         val hapticFeedback = LocalHapticFeedback.current
-        var defaultValue by remember { mutableStateOf(play) }
+        var defaultValue by remember(play) { mutableStateOf(play) }
         AnimatedContent(targetState = defaultValue) { isPlaying ->
             Card(
                 shape = CircleShape,

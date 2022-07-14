@@ -6,7 +6,10 @@ import android.content.Intent
 import io.github.binishmanandhar23.differentscreensize.enums.Action
 
 class NotificationActionReceiver: BroadcastReceiver() {
+    companion object{
+        const val Filter = "TRACKS_TRACKS"
+    }
     override fun onReceive(context: Context?, intent: Intent?) {
-        context?.sendBroadcast(Intent("TRACKS_TRACKS").putExtra(Action.ActionName.action, intent?.action))
+        context?.sendBroadcast(Intent(Filter).putExtra(Action.ActionName.action, intent?.action))
     }
 }

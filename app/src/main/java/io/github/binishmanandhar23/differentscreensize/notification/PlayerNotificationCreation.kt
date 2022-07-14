@@ -4,10 +4,12 @@ import android.app.Notification
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
-import android.graphics.BitmapFactory
+import android.graphics.Bitmap
 import android.media.MediaMetadata
 import android.media.session.MediaSession
+import android.media.session.PlaybackState
 import android.os.Build
+import android.os.Looper
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import io.github.binishmanandhar23.differentscreensize.R
@@ -15,9 +17,6 @@ import io.github.binishmanandhar23.differentscreensize.data.BookDetailData
 import io.github.binishmanandhar23.differentscreensize.enums.Action
 import io.github.binishmanandhar23.differentscreensize.enums.PlayState
 import io.github.binishmanandhar23.differentscreensize.receivers.NotificationActionReceiver
-import okhttp3.internal.notify
-import java.io.IOException
-import java.net.URL
 
 object PlayerNotificationCreation {
     const val AudioBookChannelId = "AudioBookChannelId"
@@ -25,34 +24,12 @@ object PlayerNotificationCreation {
     fun createNotification(
         context: Context,
         bookDetailData: BookDetailData,
+        albumBitmap: Bitmap,
         playState: PlayState,
         position: Int,
         size: Int
     ) {
         val notificationManagerCompat = NotificationManagerCompat.from(context)
-
-        val mediaSession = MediaSession(context, "AudioBookSession")
-        mediaSession.setMetadata(
-            MediaMetadata.Builder()
-                .putString(
-                    MediaMetadata.METADATA_KEY_TITLE,
-                    bookDetailData.bookListPreviewData.bookTitle
-                )
-                .putString(
-                    MediaMetadata.METADATA_KEY_ARTIST,
-                    bookDetailData.bookListPreviewData.bookAuthor
-                ).build()
-        )
-        val mediaStyle = Notification.MediaStyle().setMediaSession(mediaSession.sessionToken)
-
-        val icon = try {
-            URL(bookDetailData.bookListPreviewData.bookImageURL).let {
-                BitmapFactory.decodeStream(it.openConnection().getInputStream())
-            }
-        } catch (ex: IOException) {
-            ex.printStackTrace()
-            null
-        }
 
         val intentPrevious = Intent(context, NotificationActionReceiver::class.java).setAction(
             Action.ActionPrevious.action
@@ -98,13 +75,38 @@ object PlayerNotificationCreation {
         else
             PendingIntent.getBroadcast(context, 0, intentNext, PendingIntent.FLAG_UPDATE_CURRENT)
 
+        val mediaSession = MediaSession(context, "AudioBookSession")
+        mediaSession.setMetadata(
+            MediaMetadata.Builder()
+                .putString(
+                    MediaMetadata.METADATA_KEY_TITLE,
+                    bookDetailData.bookListPreviewData.bookTitle
+                )
+                .putBitmap(MediaMetadata.METADATA_KEY_ALBUM_ART, albumBitmap)
+                .putString(
+                    MediaMetadata.METADATA_KEY_ARTIST,
+                    bookDetailData.bookListPreviewData.bookAuthor
+                ).build()
+        )
+        mediaSession.setPlaybackState(
+            PlaybackState.Builder().setActions(PlaybackState.ACTION_PLAY).build()
+        )
+        mediaSession.setCallback(object : MediaSession.Callback() {
+            override fun onPlay() {
+                pendingIntentPlay.send()
+            }
+
+            override fun onPause() {
+                pendingIntentPlay.send()
+            }
+        })
+        val mediaStyle = Notification.MediaStyle().setMediaSession(mediaSession.sessionToken)
+
 
         val notification =
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                 Notification.Builder(context, AudioBookChannelId).let { notificationCompat ->
                     notificationCompat.setSmallIcon(R.drawable.ic_music_note)
-                    if (icon != null)
-                        notificationCompat.setLargeIcon(icon)
                     notificationCompat.setOnlyAlertOnce(true)
                     notificationCompat.setShowWhen(false)
                     notificationCompat.addAction(
@@ -112,13 +114,6 @@ object PlayerNotificationCreation {
                             if (position == 0) 0 else R.drawable.ic_previous,
                             "Previous",
                             if (position == 0) null else pendingIntentPrevious
-                        ).build()
-                    )
-                    notificationCompat.addAction(
-                        Notification.Action.Builder(
-                            R.drawable.ic_play,
-                            "Play",
-                            pendingIntentPlay
                         ).build()
                     )
                     notificationCompat.addAction(
@@ -134,10 +129,9 @@ object PlayerNotificationCreation {
             } else {
                 NotificationCompat.Builder(context, AudioBookChannelId).let { notificationCompat ->
                     notificationCompat.setSmallIcon(R.drawable.ic_music_note)
+                    notificationCompat.setLargeIcon(albumBitmap)
                     notificationCompat.setContentTitle(bookDetailData.bookListPreviewData.bookTitle)
                     notificationCompat.setContentText(bookDetailData.bookListPreviewData.bookAuthor)
-                    if (icon != null)
-                        notificationCompat.setLargeIcon(icon)
                     notificationCompat.setOnlyAlertOnce(true)
                     notificationCompat.setShowWhen(false)
                     notificationCompat.addAction(
@@ -145,7 +139,11 @@ object PlayerNotificationCreation {
                         "Previous",
                         if (position == 0) null else pendingIntentPrevious
                     )
-                    notificationCompat.addAction(R.drawable.ic_play, "Play", pendingIntentPlay)
+                    notificationCompat.addAction(
+                        if (playState == PlayState.PAUSED) R.drawable.ic_play else R.drawable.ic_pause,
+                        "Play",
+                        pendingIntentPlay
+                    )
                     notificationCompat.addAction(
                         if (position == size - 1) 0 else R.drawable.ic_next,
                         "Previous",
@@ -156,5 +154,18 @@ object PlayerNotificationCreation {
                 }
             }
         notificationManagerCompat.notify(1, notification)
+    }
+
+    private fun getAvailableActions(playState: PlayState): Long {
+        var actions: Long = PlaybackState.ACTION_PLAY_PAUSE or
+                PlaybackState.ACTION_PLAY_FROM_MEDIA_ID or
+                PlaybackState.ACTION_PLAY_FROM_SEARCH or
+                PlaybackState.ACTION_SKIP_TO_PREVIOUS or
+                PlaybackState.ACTION_SKIP_TO_NEXT
+        actions = if (playState == PlayState.PLAYING)
+            actions or PlaybackState.ACTION_PAUSE
+        else
+            actions or PlaybackState.ACTION_PLAY
+        return actions
     }
 }

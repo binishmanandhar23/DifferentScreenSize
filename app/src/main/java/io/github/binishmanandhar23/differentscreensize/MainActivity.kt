@@ -5,6 +5,9 @@ import android.app.NotificationManager
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
+import android.graphics.Bitmap
+import android.graphics.drawable.Drawable
 import android.media.MediaPlayer
 import android.os.Build
 import android.os.Bundle
@@ -43,6 +46,7 @@ import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.lifecycleScope
 import androidx.navigation.NavController
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavHostController
@@ -51,9 +55,19 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navigation
+import com.bumptech.glide.Glide
+import com.bumptech.glide.load.DataSource
+import com.bumptech.glide.request.RequestListener
+import com.bumptech.glide.request.target.CustomTarget
+import com.bumptech.glide.request.target.Target
+import com.bumptech.glide.request.transition.Transition
+import io.github.binishmanandhar23.differentscreensize.data.BookDetailData
 import io.github.binishmanandhar23.differentscreensize.data.CustomNavigationDrawer
 import io.github.binishmanandhar23.differentscreensize.data.Screen
 import io.github.binishmanandhar23.differentscreensize.enums.Action
+import io.github.binishmanandhar23.differentscreensize.enums.PlayState
+import io.github.binishmanandhar23.differentscreensize.interfaces.AudioBookInterface
+import io.github.binishmanandhar23.differentscreensize.network.DummyData
 import io.github.binishmanandhar23.differentscreensize.notification.PlayerNotificationCreation
 import io.github.binishmanandhar23.differentscreensize.receivers.NotificationActionReceiver
 import io.github.binishmanandhar23.differentscreensize.screens.DetailScreen
@@ -62,18 +76,21 @@ import io.github.binishmanandhar23.differentscreensize.services.OnClearFromRecen
 import io.github.binishmanandhar23.differentscreensize.ui.theme.DifferentScreenSizeTheme
 import io.github.binishmanandhar23.differentscreensize.utils.Components
 import io.github.binishmanandhar23.differentscreensize.viewmodels.DetailScreenViewModel
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import java.io.IOException
 
-class MainActivity : ComponentActivity() {
+class MainActivity : ComponentActivity(), AudioBookInterface {
     private val detailScreenViewModel by viewModels<DetailScreenViewModel>()
+    var notificationManager: NotificationManager? = null
 
-    val broadcastReceiver = object : BroadcastReceiver() {
+    private val broadcastReceiver = object : BroadcastReceiver() {
         override fun onReceive(p0: Context?, p1: Intent?) {
             p1?.extras?.getString(Action.ActionName.action)?.let { action ->
                 when (action) {
-                    Action.ActionPrevious.action -> {}
-                    Action.ActionPlay.action -> {}
-                    Action.ActionNext.action -> {}
+                    Action.ActionPrevious.action -> previous()
+                    Action.ActionPlay.action -> if (detailScreenViewModel.mediaPlayer.isPlaying) pause() else play()
+                    Action.ActionNext.action -> next()
                 }
             }
         }
@@ -83,6 +100,7 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         mediaPlayerHandler()
         createChannel()
+        registerReceiver(broadcastReceiver, IntentFilter(NotificationActionReceiver.Filter))
         startService(Intent(baseContext, OnClearFromRecent::class.java))
         setContent {
             DifferentScreenSizeTheme {
@@ -122,8 +140,8 @@ class MainActivity : ComponentActivity() {
                 "Audio Book Channel",
                 NotificationManager.IMPORTANCE_DEFAULT
             )
-            val notificationManager = getSystemService(NotificationManager::class.java)
-            notificationManager.createNotificationChannel(notificationChannel)
+            notificationManager = getSystemService(NotificationManager::class.java)
+            notificationManager?.createNotificationChannel(notificationChannel)
         }
     }
 
@@ -309,7 +327,12 @@ class MainActivity : ComponentActivity() {
 
     @Composable
     private fun Detail(navController: NavController) {
-        DetailScreen(navController, detailScreenViewModel = detailScreenViewModel).Main()
+        DetailScreen(navController, detailScreenViewModel = detailScreenViewModel, onPlayPause = {
+            if (detailScreenViewModel.mediaPlayer.isPlaying)
+                pause()
+            else
+                play()
+        }).Main()
     }
 
     private fun postClick(
@@ -335,11 +358,56 @@ class MainActivity : ComponentActivity() {
 
     override fun onDestroy() {
         detailScreenViewModel.run {
-            mediaPlayer?.stop()
-            mediaPlayer?.reset()
-            mediaPlayer?.release()
+            mediaPlayer.stop()
+            mediaPlayer.reset()
+            mediaPlayer.release()
             updateCurrentTime(0L)
         }
+        notificationManager?.cancelAll()
+        unregisterReceiver(broadcastReceiver)
         super.onDestroy()
+    }
+
+    override fun previous() {
+
+    }
+
+    override fun play() {
+        detailScreenViewModel.mediaPlayer.run {
+            notificationHandler(DummyData.bookDetailData, PlayState.PLAYING)
+            start()
+        }
+    }
+
+    override fun pause() {
+        detailScreenViewModel.mediaPlayer.run {
+            notificationHandler(DummyData.bookDetailData, PlayState.PAUSED)
+            pause()
+        }
+    }
+
+    override fun next() {
+
+    }
+
+    private fun notificationHandler(bookDetailData: BookDetailData, playState: PlayState) {
+        Glide.with(this@MainActivity).asBitmap()
+            .load(bookDetailData.bookListPreviewData.bookImageURL)
+            .into(object : CustomTarget<Bitmap>() {
+                override fun onResourceReady(resource: Bitmap, transition: Transition<in Bitmap>?) {
+                    PlayerNotificationCreation.createNotification(
+                        context = this@MainActivity,
+                        bookDetailData = bookDetailData,
+                        albumBitmap = resource,
+                        playState = playState,
+                        position = 0,
+                        size = 1
+                    )
+                }
+
+                override fun onLoadCleared(placeholder: Drawable?) {
+
+                }
+            })
     }
 }

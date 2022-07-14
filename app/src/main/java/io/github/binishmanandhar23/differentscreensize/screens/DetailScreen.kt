@@ -1,12 +1,7 @@
 package io.github.binishmanandhar23.differentscreensize.screens
 
-import android.content.BroadcastReceiver
-import android.content.Context
-import android.content.Intent
-import android.media.MediaPlayer
 import android.os.Build
 import android.os.CountDownTimer
-import android.util.Log
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.ExperimentalAnimationApi
 import androidx.compose.foundation.background
@@ -21,54 +16,45 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
+import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
-import io.github.binishmanandhar23.differentscreensize.data.BookDetailData
-import io.github.binishmanandhar23.differentscreensize.data.BookListPreviewData
-import io.github.binishmanandhar23.differentscreensize.enums.Action
-import io.github.binishmanandhar23.differentscreensize.receivers.NotificationActionReceiver
+import io.github.binishmanandhar23.differentscreensize.enums.PlayState
+import io.github.binishmanandhar23.differentscreensize.network.DummyData.bookDetailData
+import io.github.binishmanandhar23.differentscreensize.notification.PlayerNotificationCreation
 import io.github.binishmanandhar23.differentscreensize.utils.Components
 import io.github.binishmanandhar23.differentscreensize.utils.Components.CustomImage
 import io.github.binishmanandhar23.differentscreensize.viewmodels.DetailScreenViewModel
 import kotlinx.coroutines.launch
-import java.io.IOException
-import kotlin.random.Random
 
 class DetailScreen(
     private val navController: NavController,
-    val detailScreenViewModel: DetailScreenViewModel
+    val detailScreenViewModel: DetailScreenViewModel,
+    val onPlayPause: () -> Unit
 ) {
-    private val bookDetailData = BookDetailData(
-        bookListPreviewData = BookListPreviewData(
-            bookImageURL = io.github.binishmanandhar23.differentscreensize.utils.Random.getBookThumbnails30(
-                Random.nextInt(30000, 30001)
-            ),
-            bookTitle = "The power of positive thinking",
-            bookAuthor = "Binish Mananandhar",
-            availableLanguage = "English"
-        ), audioUrl = "https://www.kozco.com/tech/piano2.wav"
-    )
 
     @OptIn(ExperimentalAnimationApi::class)
     @Composable
     fun Main() {
+        val context = LocalContext.current
         val listOfPlaybackSpeed = listOf(0.75f, 1.0f, 1.25f, 1.50f, 1.75f, 2.0f)
         var selectedSpeed by remember { mutableStateOf(1f) }
         val currentTimeFormatted by detailScreenViewModel.currentTime.collectAsState()
         var currentTime by remember { mutableStateOf(0f) }
-        var duration by remember{ mutableStateOf(0f) }
+        var duration by remember { mutableStateOf(0f) }
         val initializing by detailScreenViewModel.initializing.collectAsState()
         val coroutineScope = rememberCoroutineScope()
         val audioUrl by derivedStateOf {
             bookDetailData.audioUrl
         }
-        LaunchedEffect(key1 = audioUrl){
+        LaunchedEffect(key1 = audioUrl) {
             detailScreenViewModel.currentlyPlayingAudioUrl.value = audioUrl
         }
         DisposableEffect(key1 = initializing) {
@@ -78,7 +64,8 @@ class DetailScreen(
                     if (!initializing)
                         detailScreenViewModel.updateCurrentTime(detailScreenViewModel.mediaPlayer.currentPosition.toLong())
                             .also {
-                                currentTime = detailScreenViewModel.mediaPlayer.currentPosition.toFloat()
+                                currentTime =
+                                    detailScreenViewModel.mediaPlayer.currentPosition.toFloat()
                             }
                 }
 
@@ -196,10 +183,11 @@ class DetailScreen(
                             }
                         }
                 }
-                Components.PlayPauseButton(loading = initializing, play = detailScreenViewModel.mediaPlayer.isPlaying) {
-                    if (detailScreenViewModel.mediaPlayer.isPlaying)
-                        detailScreenViewModel.mediaPlayer.pause()
-                    else detailScreenViewModel.mediaPlayer.start()
+                Components.PlayPauseButton(
+                    loading = initializing,
+                    play = detailScreenViewModel.mediaPlayer.isPlaying
+                ) {
+                    onPlayPause()
                 }
             }
         }
