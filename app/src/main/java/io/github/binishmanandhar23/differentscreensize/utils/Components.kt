@@ -1,5 +1,6 @@
 package io.github.binishmanandhar23.differentscreensize.utils
 
+import android.util.Log
 import androidx.compose.animation.*
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
@@ -204,7 +205,7 @@ object Components {
         duration: Float,
         onValueChangeFinished: (newValue: Float) -> Unit
     ) {
-        var defaultValue by remember { mutableStateOf(value) }
+        var defaultValue by remember(value) { mutableStateOf(value) }
         Slider(
             value = defaultValue,
             onValueChange = { defaultValue = it },

@@ -99,16 +99,15 @@ class MainActivity : ComponentActivity() {
 
     private fun mediaPlayerHandler() {
         detailScreenViewModel.currentlyPlayingAudioUrl.observe(this) {
-            detailScreenViewModel.mediaPlayer = MediaPlayer().apply {
+            detailScreenViewModel.run {
                 try {
-                    Log.i("PrepareCheck","Loading $it")
-                    detailScreenViewModel.isLoading()
-                    setDataSource(it)
-                    prepare()
-                    setOnPreparedListener {
-                        Log.i("PrepareCheck","Done")
-                        detailScreenViewModel.done()
+                    isLoading()
+                    mediaPlayer.reset()
+                    mediaPlayer.setDataSource(it)
+                    mediaPlayer.setOnPreparedListener {
+                        done()
                     }
+                    mediaPlayer.prepareAsync()
                 } catch (exception: IOException) {
                     exception.printStackTrace()
                 }

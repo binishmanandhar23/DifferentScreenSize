@@ -52,7 +52,7 @@ class DetailScreen(
             bookTitle = "The power of positive thinking",
             bookAuthor = "Binish Mananandhar",
             availableLanguage = "English"
-        ), audioUrl = "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3"
+        ), audioUrl = "https://www.kozco.com/tech/piano2.wav"
     )
 
     @OptIn(ExperimentalAnimationApi::class)
@@ -62,38 +62,23 @@ class DetailScreen(
         var selectedSpeed by remember { mutableStateOf(1f) }
         val currentTimeFormatted by detailScreenViewModel.currentTime.collectAsState()
         var currentTime by remember { mutableStateOf(0f) }
+        var duration by remember{ mutableStateOf(0f) }
         val initializing by detailScreenViewModel.initializing.collectAsState()
         val coroutineScope = rememberCoroutineScope()
         val audioUrl by derivedStateOf {
             bookDetailData.audioUrl
         }
-        /*LaunchedEffect(key1 = audioUrl){
+        LaunchedEffect(key1 = audioUrl){
             detailScreenViewModel.currentlyPlayingAudioUrl.value = audioUrl
-        }*/
-        val mediaPlayer = remember {
-            detailScreenViewModel.isLoading()
-            MediaPlayer().apply {
-                Log.i("PrepareCheck","Loading")
-                try {
-                    setDataSource(bookDetailData.audioUrl)
-                    prepareAsync()
-                    setOnPreparedListener {
-                        Log.i("PrepareCheck","Done")
-                        detailScreenViewModel.done()
-                    }
-                } catch (exception: IOException) {
-                    exception.printStackTrace()
-                }
-            }
         }
-
-        DisposableEffect(key1 = Unit) {
+        DisposableEffect(key1 = initializing) {
+            duration = detailScreenViewModel.mediaPlayer.duration.toFloat()
             val countDownTimer: CountDownTimer = object : CountDownTimer(Long.MAX_VALUE, 1000) {
                 override fun onTick(p0: Long) {
                     if (!initializing)
-                        detailScreenViewModel.updateCurrentTime(detailScreenViewModel.mediaPlayer?.currentPosition?.toLong()?: 0L)
+                        detailScreenViewModel.updateCurrentTime(detailScreenViewModel.mediaPlayer.currentPosition.toLong())
                             .also {
-                                currentTime = detailScreenViewModel.mediaPlayer?.currentPosition?.toFloat()?: 0f
+                                currentTime = detailScreenViewModel.mediaPlayer.currentPosition.toFloat()
                             }
                 }
 
@@ -161,7 +146,7 @@ class DetailScreen(
                                         isSelected = selectedSpeed == it
                                     ) { speed ->
                                         selectedSpeed = speed
-                                        detailScreenViewModel.mediaPlayer?.let { player ->
+                                        detailScreenViewModel.mediaPlayer.let { player ->
                                             player.playbackParams =
                                                 player.playbackParams.setSpeed(speed)
                                         }
@@ -181,10 +166,10 @@ class DetailScreen(
                                 value = currentTime,
                                 onValueChangeFinished = {
                                     coroutineScope.launch {
-                                        detailScreenViewModel.mediaPlayer?.seekTo(it.toInt())
+                                        detailScreenViewModel.mediaPlayer.seekTo(it.toInt())
                                     }
                                 },
-                                duration = detailScreenViewModel.mediaPlayer?.duration?.toFloat() ?: 0f
+                                duration = duration
                             )
                             Row(
                                 modifier = Modifier
@@ -201,7 +186,7 @@ class DetailScreen(
                                     )
                                 )
                                 Text(
-                                    text = detailScreenViewModel.getFormattedTime(detailScreenViewModel.mediaPlayer?.duration?.toLong()?: 0L),
+                                    text = detailScreenViewModel.getFormattedTime(duration.toLong()),
                                     style = TextStyle(
                                         fontSize = 15.sp,
                                         fontWeight = FontWeight.Light,
@@ -211,10 +196,10 @@ class DetailScreen(
                             }
                         }
                 }
-                Components.PlayPauseButton(loading = initializing, play = detailScreenViewModel.mediaPlayer?.isPlaying?: false) {
-                    if (detailScreenViewModel.mediaPlayer?.isPlaying == true)
-                        detailScreenViewModel.mediaPlayer?.pause()
-                    else detailScreenViewModel.mediaPlayer?.start()
+                Components.PlayPauseButton(loading = initializing, play = detailScreenViewModel.mediaPlayer.isPlaying) {
+                    if (detailScreenViewModel.mediaPlayer.isPlaying)
+                        detailScreenViewModel.mediaPlayer.pause()
+                    else detailScreenViewModel.mediaPlayer.start()
                 }
             }
         }
