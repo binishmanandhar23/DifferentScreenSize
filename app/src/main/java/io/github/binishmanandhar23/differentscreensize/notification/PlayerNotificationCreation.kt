@@ -2,14 +2,15 @@ package io.github.binishmanandhar23.differentscreensize.notification
 
 import android.app.Notification
 import android.app.PendingIntent
+import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.graphics.Bitmap
+import android.graphics.drawable.Icon
 import android.media.MediaMetadata
 import android.media.session.MediaSession
 import android.media.session.PlaybackState
 import android.os.Build
-import android.os.Looper
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import io.github.binishmanandhar23.differentscreensize.R
@@ -76,6 +77,7 @@ object PlayerNotificationCreation {
             PendingIntent.getBroadcast(context, 0, intentNext, PendingIntent.FLAG_UPDATE_CURRENT)
 
         val mediaSession = MediaSession(context, "AudioBookSession")
+        mediaSession.isActive = true
         mediaSession.setMetadata(
             MediaMetadata.Builder()
                 .putString(
@@ -88,18 +90,8 @@ object PlayerNotificationCreation {
                     bookDetailData.bookListPreviewData.bookAuthor
                 ).build()
         )
-        mediaSession.setPlaybackState(
-            PlaybackState.Builder().setActions(PlaybackState.ACTION_PLAY).build()
-        )
-        mediaSession.setCallback(object : MediaSession.Callback() {
-            override fun onPlay() {
-                pendingIntentPlay.send()
-            }
 
-            override fun onPause() {
-                pendingIntentPlay.send()
-            }
-        })
+
         val mediaStyle = Notification.MediaStyle().setMediaSession(mediaSession.sessionToken)
 
 
@@ -111,15 +103,25 @@ object PlayerNotificationCreation {
                     notificationCompat.setShowWhen(false)
                     notificationCompat.addAction(
                         Notification.Action.Builder(
-                            if (position == 0) 0 else R.drawable.ic_previous,
+                            Icon.createWithResource(
+                                context,if (position == 0) 0 else R.drawable.ic_previous),
                             "Previous",
                             if (position == 0) null else pendingIntentPrevious
                         ).build()
                     )
                     notificationCompat.addAction(
                         Notification.Action.Builder(
-                            if (position == size - 1) 0 else R.drawable.ic_next,
-                            "Previous",
+                            Icon.createWithResource(
+                                context,
+                                if(playState == PlayState.PLAYING) R.drawable.ic_pause else R.drawable.ic_play
+                            ), if(playState == PlayState.PLAYING) "Pause" else "Play", pendingIntentPlay
+                        ).build()
+                    )
+                    notificationCompat.addAction(
+                        Notification.Action.Builder(
+                            Icon.createWithResource(
+                                context,if (position == size - 1) 0 else R.drawable.ic_next),
+                            "Next",
                             if (position == size - 1) null else pendingIntentNext
                         ).build()
                     )
